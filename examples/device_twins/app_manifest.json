@@ -5,12 +5,6 @@
   "EntryPoint": "/bin/app",
   "CmdArgs": ["--ConnectionType", "DPS", "--ScopeID", "YOUR_ID_SCOPE"],
   "Capabilities": {
-    "Gpio": [
-      "$LED2"
-    ],
-    "PowerControls": [
-      "ForceReboot"
-    ],
     "AllowedConnections": [ 
       "global.azure-devices-provisioning.net",
       "Replace_IoT_Hub_Endpoint",

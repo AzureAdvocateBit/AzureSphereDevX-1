@@ -23,7 +23,6 @@
 
 #include "dx_azure_iot.h"
 #include "dx_config.h"
-#include "dx_azure_iot.h"
 #include "dx_device_twins.h"
 #include "dx_exit_codes.h"
 #include "dx_terminate.h"
@@ -74,8 +73,8 @@ static void report_now_handler(EventLoopTimer* eventLoopTimer) {
 static void dt_desired_sample_rate_handler(DX_DEVICE_TWIN_BINDING* deviceTwinBinding) {
 	// validate data is sensible range before applying
 	if (deviceTwinBinding->twinType == DX_TYPE_INT && *(int*)deviceTwinBinding->twinState >= 0 && *(int*)deviceTwinBinding->twinState <= 120) {
-		dx_deviceTwinAckDesiredState(deviceTwinBinding, deviceTwinBinding->twinState, DX_DEVICE_TWIN_COMPLETED);
 		dx_timerChange(&report_now_timer, &(struct timespec){*(int*)deviceTwinBinding->twinState, 0});
+		dx_deviceTwinAckDesiredState(deviceTwinBinding, deviceTwinBinding->twinState, DX_DEVICE_TWIN_COMPLETED);
 	} else {
 		dx_deviceTwinAckDesiredState(deviceTwinBinding, deviceTwinBinding->twinState, DX_DEVICE_TWIN_ERROR);
 	}
