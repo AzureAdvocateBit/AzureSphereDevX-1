@@ -1,5 +1,7 @@
 #pragma once
 
+// This is a sample Intercore contract only
+
 #include <stdbool.h>
 #include <stdint.h>
 

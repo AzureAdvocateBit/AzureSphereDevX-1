@@ -39,7 +39,6 @@ DX_USER_CONFIG dx_config;
 static void report_now_handler(EventLoopTimer* eventLoopTimer);
 static void dt_desired_sample_rate_handler(DX_DEVICE_TWIN_BINDING* deviceTwinBinding);
 
-
 // Update device twin every 5 seconds
 static DX_TIMER report_now_timer = { .period = { 5, 0 }, .name = "report_now_timer", .handler = report_now_handler };
 
@@ -53,10 +52,10 @@ static DX_DEVICE_TWIN_BINDING dt_reported_temperature = {
 	.twinProperty = "ReportedCurrentTime",
 	.twinType = DX_TYPE_STRING };
 
-
 // Add all timers by reference to this timer set. 
 // All timers in this set will be initialised in the InitPeripheralsAndHandlers function
-DX_TIMER* timerSet[] = { &report_now_handler };
+DX_TIMER* timerSet[] = { &report_now_timer };
+
 // Add all device twins by reference to the device twin 
 // All device twins in this set will be initialised in the InitPeripheralsAndHandlers function
 DX_DEVICE_TWIN_BINDING* deviceTwinBindingSet[] = { &dt_desired_sample_rate, &dt_reported_temperature };

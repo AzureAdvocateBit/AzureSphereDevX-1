@@ -3,7 +3,6 @@
 #include "dx_terminate.h"
 #include "dx_timer.h"
 #include "eventloop_timer_utilities.h"
-#include "intercore_contract.h"
 #include <applibs/application.h>
 #include <applibs/eventloop.h>
 #include <applibs/log.h>
