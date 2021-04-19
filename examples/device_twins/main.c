@@ -29,7 +29,6 @@
 #include "dx_timer.h"
 #include "dx_utilities.h"
 #include <applibs/log.h>
-#include <applibs/powermanagement.h>
 
 #define JSON_MESSAGE_BYTES 256  // Number of bytes to allocate for the JSON telemetry message for IoT Central
 static char msgBuffer[JSON_MESSAGE_BYTES] = { 0 };
@@ -59,7 +58,6 @@ DX_TIMER* timerSet[] = { &report_now_timer };
 // All device twins in this set will be initialised in the InitPeripheralsAndHandlers function
 DX_DEVICE_TWIN_BINDING* deviceTwinBindingSet[] = { &dt_desired_sample_rate, &dt_reported_temperature };
 
-
 static void report_now_handler(EventLoopTimer* eventLoopTimer) {
 	if (ConsumeEventLoopTimerEvent(eventLoopTimer) != 0) {
 		dx_terminate(DX_ExitCode_ConsumeEventLoopTimeEvent);
@@ -88,7 +86,6 @@ static void dt_desired_sample_rate_handler(DX_DEVICE_TWIN_BINDING* deviceTwinBin
 	*/
 }
 
-
 /// <summary>
 ///  Initialize peripherals, device twins, direct methods, timers.
 /// </summary>
@@ -96,7 +93,6 @@ static void InitPeripheralsAndHandlers(void) {
 	dx_azureInitialize(dx_config.scopeId, NULL);
 	dx_timerSetStart(timerSet, NELEMS(timerSet));
 	dx_deviceTwinSetOpen(deviceTwinBindingSet, NELEMS(deviceTwinBindingSet));
-
 }
 
 /// <summary>
