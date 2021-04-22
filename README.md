@@ -16,7 +16,7 @@ Note, you will find examples of each context in the examples folder of this repo
 1. [Direct Methods](https://github.com/gloveboxes/AzureSphereDevX/tree/main/examples/direct_methods).
 1. [Device Twins](https://github.com/gloveboxes/AzureSphereDevX/tree/main/examples/device_twins).
 1. [GPIO](https://github.com/gloveboxes/AzureSphereDevX/tree/main/examples/gpio_example). Note, GPIO is supported as it's use can be generalized. There are no plans to generalize the use of ADC, PWM, I2C and SPI peripherals given the varied nature of their use.
-1. [Intercore communications]().
+1. [Intercore communications](https://github.com/gloveboxes/AzureSphereDevX/tree/main/examples/intercore_example).
 1. [Timers](https://github.com/gloveboxes/AzureSphereDevX/tree/main/examples/timer_example).
  
 
