@@ -45,7 +45,7 @@ The device twins need to be initialized, but first they need to be added to an a
 DX_DEVICE_TWIN_BINDING* deviceTwinBindingSet[] = { &dt_desired_sample_rate, &dt_reported_temperature };
 ```
 
-and finally then array of twins needs to be opened.
+and finally the array of twins needs to be opened.
 
 ```c
 dx_timerSetStart(timerSet, NELEMS(timerSet));
