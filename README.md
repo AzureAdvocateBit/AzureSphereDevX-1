@@ -102,10 +102,10 @@ DX_TIMER report_now_timer = { .period = { 5, 0 }, .name = "report_now_timer", .h
 DX_GPIO buttonA = {.pin = BUTTON_A, .name = "buttonA",.direction = DX_INPUT, .detect = DX_GPIO_DETECT_LOW };
 ```
 
-### Direct methods
+### Direct method binding
 
 ```c
-DX_DIRECT_METHOD_RESPONSE_CODE LightControlHandler(JSON_Value* json, DX_DIRECT_METHOD_BINDING* directMethodBinding, char** responseMsg);
+DX_DIRECT_METHOD_BINDING dm_restartDevice = { .methodName = "RestartDevice", .handler = RestartDeviceHandler };
 ```
 
 ### Intercore messages
