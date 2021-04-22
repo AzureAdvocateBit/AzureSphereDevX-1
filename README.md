@@ -2,7 +2,14 @@
 
 The DevX library can accelerate your development and improve your developer experience with Azure Sphere. The DevX library addresses many common Azure Sphere scenarios, it will help reduce the amount of code you write and improve readability and long-term application maintenance.
 
-The DevX library is built from the Azure Sphere samples and aims to facilitate Azure Sphere best practices. The DevX library is lightweight, addresses common scenarios, and will sit alongside your existing code base.
+To learn more about Azure Sphere and Azure RTOS then check out [Combining Azure Sphere IoT security with Azure RTOS real-time capabilities](https://techcommunity.microsoft.com/t5/internet-of-things/combining-azure-sphere-iot-security-with-azure-rtos-real-time/ba-p/1992869) article.
+
+There are two Microsoft Learn modules which include hands-on labs you can download to start your Azure Sphere and Azure RTOS journey.
+
+- [Develop secure IoT solutions for Azure Sphere, Azure RTOS and Azure IoT Central](https://docs.microsoft.com/en-us/learn/modules/develop-secure-iot-solutions-azure-sphere-iot-central?WT.mc_id=iot-10976-dglover)
+- [Develop secure IoT Solutions for Azure Sphere, Azure RTOS and IoT Hub](https://docs.microsoft.com/en-us/learn/modules/develop-secure-iot-solutions-azure-sphere-iot-hub?WT.mc_id=iot-11691-dglover)
+
+The DevX library is built from the [Azure Sphere samples](https://github.com/Azure/azure-sphere-samples) and aims to facilitate Azure Sphere best practices. The DevX library is lightweight, addresses common scenarios, and will sit alongside your existing code base.
 
 The DevX library design is context-based, you declare a context and the libraries supports the context. See the [Encapsulate Pattern](https://accu.org/journals/overload/12/63/kelly_246/), it's a fair description of how this library works.
 
