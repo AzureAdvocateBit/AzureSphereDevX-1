@@ -2,7 +2,7 @@
 
 The DevX library can accelerate your development and improve your developer experience with Azure Sphere. The DevX library addresses many common Azure Sphere scenarios, it will help reduce the amount of code you write and improve readability and long-term application maintenance.
 
-To learn more about Azure Sphere and Azure RTOS then check out [Combining Azure Sphere IoT security with Azure RTOS real-time capabilities](https://techcommunity.microsoft.com/t5/internet-of-things/combining-azure-sphere-iot-security-with-azure-rtos-real-time/ba-p/1992869) article.
+To learn more about Azure Sphere and Azure RTOS check out [Combining Azure Sphere IoT security with Azure RTOS real-time capabilities](https://techcommunity.microsoft.com/t5/internet-of-things/combining-azure-sphere-iot-security-with-azure-rtos-real-time/ba-p/1992869) article.
 
 There are two Microsoft Learn modules which include hands-on labs you can download to start your Azure Sphere and Azure RTOS journey.
 
@@ -118,7 +118,7 @@ INTERCORE_CONTEXT intercore_environment_ctx = {
 };
 ```
 
-## How to using the library
+## How to use the library
 
 This example assumes you are using git, otherwise download the [Azure Sphere DevX library](https://github.com/gloveboxes/AzureSphereDevX) and add to the directory to your project.
 
