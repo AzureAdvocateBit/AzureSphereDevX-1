@@ -47,3 +47,38 @@ void dx_terminate(int exitCode);
 bool dx_isTerminationRequired(void);
 int dx_getTerminationExitCode(void);
 ```
+
+## Example
+
+```c
+static void LedOffToggleHandler(EventLoopTimer* eventLoopTimer) {
+    if (ConsumeEventLoopTimerEvent(eventLoopTimer) != 0) {
+        dx_terminate(DX_ExitCode_ConsumeEventLoopTimeEvent);
+        return;
+    }
+    dx_gpioOff(&led);
+}
+```
+
+```c
+int main(void)
+{
+    dx_registerTerminationHandler();
+    InitPeripheralsAndHandlers();
+
+    // Main loop
+    while (!dx_isTerminationRequired())
+    {
+        int result = EventLoop_Run(dx_timerGetEventLoop(), -1, true);
+        // Continue if interrupted by signal, e.g. due to breakpoint being set.
+        if (result == -1 && errno != EINTR)
+        {
+            dx_terminate(DX_ExitCode_Main_EventLoopFail);
+        }
+    }
+
+    ClosePeripheralsAndHandlers();
+    Log_Debug("Application exiting.\n");
+    return dx_getTerminationExitCode();
+}
+```
