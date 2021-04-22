@@ -99,7 +99,7 @@ DX_TIMER report_now_timer = { .period = { 5, 0 }, .name = "report_now_timer", .h
 ### GPIO context
 
 ```c
-DX_TIMER blinkLedTimer = { .period = { 0, 500 * oneMS }, .name = "blinkLedTimer", .handler = BlinkLedHandler };
+DX_GPIO buttonA = {.pin = BUTTON_A, .name = "buttonA",.direction = DX_INPUT, .detect = DX_GPIO_DETECT_LOW };
 ```
 
 ### Direct methods
