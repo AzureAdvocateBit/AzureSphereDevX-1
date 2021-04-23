@@ -24,6 +24,17 @@ typedef enum {
 	DEVICE_DISABLED
 } CONNECTION_STATE;
 
+typedef enum {
+	DEVICE_NOT_PROVISIONED,
+	DEVICE_PROVISIONING_ERROR,
+	DEVICE_PROVISIONING,
+	DEVICE_PROVISION_IOT_CLIENT,
+	DEVICE_PROVISIONED
+} PROVISIONING_STATE;
+
+static PROVISIONING_STATE provisioningState = DEVICE_NOT_PROVISIONED;
+static PROV_DEVICE_LL_HANDLE prov_handle = NULL;
+
 /// <summary>
 /// Authentication state of the client with respect to the Azure IoT Hub.
 /// </summary>
@@ -218,6 +229,10 @@ static bool SetupAzureClient() {
 		}
 	}
 
+	if (provisioningState != DEVICE_PROVISIONED){ 
+		return false;
+	}
+
 	iotHubClientAuthenticationState = IoTHubClientAuthenticationState_AuthenticationInitiated;
 
 	IoTHubDeviceClient_LL_SetDeviceTwinCallback(iothubClientHandle, dx_twinCallback, NULL);
@@ -239,6 +254,11 @@ static void RegisterDeviceCallback(PROV_DEVICE_RESULT registerResult, const char
 
 		size_t uriSize = strlen(callbackHubUri) + 1; // +1 for NULL string termination
 
+		if (iotHubUri != NULL) {
+			free(iotHubUri);
+			iotHubUri = NULL;
+		}
+
 		iotHubUri = (char*)malloc(uriSize);
 
 		if (iotHubUri == NULL) {
@@ -253,131 +273,168 @@ static void RegisterDeviceCallback(PROV_DEVICE_RESULT registerResult, const char
 ///     Provision with DPS and assign IoT Plug and Play Model ID
 /// </summary>
 static bool ProvisionWithDpsPnP(void) {
-	PROV_DEVICE_LL_HANDLE prov_handle = NULL;
+	
 	PROV_DEVICE_RESULT prov_result;
 	bool result = false;
 	char* dtdlBuffer = NULL;
 	int deviceIdForDaaCertUsage = 0;  // set DaaCertUsage to false
 
-	if (!dx_isDeviceAuthReady()) {
+	if (!dx_isDeviceAuthReady() || !dx_isNetworkReady()) {
 		return false;
 	}
 
-	if (_deviceTwinModelId != NULL && strlen(_deviceTwinModelId) > 0) {
-		size_t modelIdLen = 20; // allow for JSON format "{\"modelId\":\"%s\"}", 14 char, plus null and a couple of extra :)
-		modelIdLen += strlen(_deviceTwinModelId); // allow for twin property name in JSON response
+	switch (provisioningState) 	{
+	case DEVICE_NOT_PROVISIONED:
+		if (_deviceTwinModelId != NULL && strlen(_deviceTwinModelId) > 0) {
+			size_t modelIdLen = 20; // allow for JSON format "{\"modelId\":\"%s\"}", 14 char, plus null and a couple of extra :)
+			modelIdLen += strlen(_deviceTwinModelId); // allow for twin property name in JSON response
 
-		dtdlBuffer = (char*)malloc(modelIdLen);
-		if (dtdlBuffer == NULL) {
-			Log_Debug("ERROR: PnP Model ID malloc failed.\n");
+			dtdlBuffer = (char*)malloc(modelIdLen);
+			if (dtdlBuffer == NULL) {
+				Log_Debug("ERROR: PnP Model ID malloc failed.\n");
+				provisioningState = DEVICE_PROVISIONING_ERROR;
+				goto cleanup;
+			}
+
+			int len = snprintf(dtdlBuffer, modelIdLen, "{\"modelId\":\"%s\"}", _deviceTwinModelId);
+			if (len < 0 || len >= modelIdLen) {
+				Log_Debug("ERROR: Cannot write Model ID to buffer.\n");
+				provisioningState = DEVICE_PROVISIONING_ERROR;
+				goto cleanup;
+			}
+		}
+
+		// Initiate security with X509 Certificate
+		if (prov_dev_security_init(SECURE_DEVICE_TYPE_X509) != 0) {
+			Log_Debug("ERROR: Failed to initiate X509 Certificate security\n");
+			provisioningState = DEVICE_PROVISIONING_ERROR;
 			goto cleanup;
 		}
 
-		int len = snprintf(dtdlBuffer, modelIdLen, "{\"modelId\":\"%s\"}", _deviceTwinModelId);
-		if (len < 0 || len >= modelIdLen) {
-			Log_Debug("ERROR: Cannot write Model ID to buffer.\n");
+		// Create Provisioning Client for communication with DPS using MQTT protocol
+		if ((prov_handle = Prov_Device_LL_Create(dpsUrl, _idScope, Prov_Device_MQTT_Protocol)) == NULL) {
+			Log_Debug("ERROR: Failed to create Provisioning Client\n");
+			provisioningState = DEVICE_PROVISIONING_ERROR;
 			goto cleanup;
 		}
-	}
 
-	// Initiate security with X509 Certificate
-	if (prov_dev_security_init(SECURE_DEVICE_TYPE_X509) != 0) {
-		Log_Debug("ERROR: Failed to initiate X509 Certificate security\n");
-		goto cleanup;
-	}
-
-	// Create Provisioning Client for communication with DPS using MQTT protocol
-	if ((prov_handle = Prov_Device_LL_Create(dpsUrl, _idScope, Prov_Device_MQTT_Protocol)) == NULL) {
-		Log_Debug("ERROR: Failed to create Provisioning Client\n");
-		goto cleanup;
-	}
-
-	// Sets Device ID on Provisioning Client
-	if ((prov_result = Prov_Device_LL_SetOption(prov_handle, "SetDeviceId", &deviceIdForDaaCertUsage)) != PROV_DEVICE_RESULT_OK) {
-		Log_Debug("ERROR: Failed to set Device ID in Provisioning Client, error=%d\n", prov_result);
-		goto cleanup;
-	}
-
-	// Sets Model ID provisioning data
-	if (dtdlBuffer != NULL) {
-		if ((prov_result = Prov_Device_LL_Set_Provisioning_Payload(prov_handle, dtdlBuffer)) != PROV_DEVICE_RESULT_OK) {
-			Log_Debug("Error: Failed to set Model ID in Provisioning Client, error=%d\n", prov_result);
+		// Sets Device ID on Provisioning Client
+		if ((prov_result = Prov_Device_LL_SetOption(prov_handle, "SetDeviceId", &deviceIdForDaaCertUsage)) != PROV_DEVICE_RESULT_OK) {
+			Log_Debug("ERROR: Failed to set Device ID in Provisioning Client, error=%d\n", prov_result);
+			provisioningState = DEVICE_PROVISIONING_ERROR;
 			goto cleanup;
 		}
-	}
 
-	// Sets the callback function for device registration
-	if ((prov_result = Prov_Device_LL_Register_Device(prov_handle, RegisterDeviceCallback, NULL, NULL, NULL)) != PROV_DEVICE_RESULT_OK) {
-		Log_Debug("ERROR: Failed to set callback function for device registration, error=%d\n", prov_result);
-		goto cleanup;
-	}
+		// Sets Model ID provisioning data
+		if (dtdlBuffer != NULL) {
+			if ((prov_result = Prov_Device_LL_Set_Provisioning_Payload(prov_handle, dtdlBuffer)) != PROV_DEVICE_RESULT_OK) {
+				Log_Debug("Error: Failed to set Model ID in Provisioning Client, error=%d\n", prov_result);
+				provisioningState = DEVICE_PROVISIONING_ERROR;
+				goto cleanup;
+			}
+		}
 
-	// Begin provisioning device with DPS
-	// Initiates timer to prevent timing out
-	static const long timeoutMs = 15000; // allow up to 15 seconds before timeout
-	static const long workDelayMs = 25;
-	const struct timespec sleepTime = { .tv_sec = 0, .tv_nsec = workDelayMs * 1000 * 1000 };
-	long time_elapsed = 0;
+		// Sets the callback function for device registration
+		if ((prov_result = Prov_Device_LL_Register_Device(prov_handle, RegisterDeviceCallback, NULL, NULL, NULL)) != PROV_DEVICE_RESULT_OK) {
+			Log_Debug("ERROR: Failed to set callback function for device registration, error=%d\n", prov_result);
+			provisioningState = DEVICE_PROVISIONING_ERROR;
+			goto cleanup;
+		}
 
-	dpsRegisterStatus = PROV_DEVICE_REG_HUB_NOT_SPECIFIED;
+		provisioningState = DEVICE_PROVISIONING;
 
-	while (dpsRegisterStatus != PROV_DEVICE_RESULT_OK && time_elapsed < timeoutMs) {
+		break;
+	case DEVICE_PROVISIONING:
 		Prov_Device_LL_DoWork(prov_handle);
-		nanosleep(&sleepTime, NULL);
-		time_elapsed += workDelayMs;
-	}
+		if (dpsRegisterStatus == PROV_DEVICE_RESULT_OK) {
+			provisioningState = DEVICE_PROVISION_IOT_CLIENT;
+		}
 
-	if (dpsRegisterStatus != PROV_DEVICE_RESULT_OK) {
-		Log_Debug("ERROR: Failed to register device with provisioning service\n");
-		goto cleanup;
-	}
-
-	if ((iothubClientHandle = IoTHubDeviceClient_LL_CreateWithAzureSphereFromDeviceAuth(iotHubUri, MQTT_Protocol)) == NULL) {
-		Log_Debug("ERROR: Failed to create client IoT Hub Client Handle\n");
-		goto cleanup;
-	}
-
-	// IOTHUB_CLIENT_RESULT iothub_result 
-	int deviceId = 1;
-	if (IoTHubDeviceClient_LL_SetOption(iothubClientHandle, "SetDeviceId", &deviceId) != IOTHUB_CLIENT_OK) {
-		IoTHubDeviceClient_LL_Destroy(iothubClientHandle);
-		iothubClientHandle = NULL;
-		Log_Debug("ERROR: Failed to set Device ID on IoT Hub Client\n");
-		goto cleanup;
-	}
-
-	// Sets auto URL encoding on IoT Hub Client
-	bool urlAutoEncodeDecode = true;
-	if (IoTHubDeviceClient_LL_SetOption(iothubClientHandle, OPTION_AUTO_URL_ENCODE_DECODE, &urlAutoEncodeDecode) != IOTHUB_CLIENT_OK) {
-		Log_Debug("ERROR: Failed to set auto Url encode option on IoT Hub Client\n");
-		goto cleanup;
-	}
-
-	if (dtdlBuffer != NULL) {
-		if (IoTHubDeviceClient_LL_SetOption(iothubClientHandle, OPTION_MODEL_ID, _deviceTwinModelId) != IOTHUB_CLIENT_OK) {
-			Log_Debug("ERROR: failure setting option \"%s\"\n", OPTION_MODEL_ID);
+		break;
+	case DEVICE_PROVISION_IOT_CLIENT:
+		if ((iothubClientHandle = IoTHubDeviceClient_LL_CreateWithAzureSphereFromDeviceAuth(iotHubUri, MQTT_Protocol)) == NULL) {
+			Log_Debug("ERROR: Failed to create client IoT Hub Client Handle\n");
+			provisioningState = DEVICE_PROVISIONING_ERROR;
 			goto cleanup;
 		}
+
+		// IOTHUB_CLIENT_RESULT iothub_result 
+		int deviceId = 1;
+		if (IoTHubDeviceClient_LL_SetOption(iothubClientHandle, "SetDeviceId", &deviceId) != IOTHUB_CLIENT_OK) {
+			IoTHubDeviceClient_LL_Destroy(iothubClientHandle);
+			iothubClientHandle = NULL;
+			Log_Debug("ERROR: Failed to set Device ID on IoT Hub Client\n");
+			provisioningState = DEVICE_PROVISIONING_ERROR;
+			goto cleanup;
+		}
+
+		// Sets auto URL encoding on IoT Hub Client
+		bool urlAutoEncodeDecode = true;
+		if (IoTHubDeviceClient_LL_SetOption(iothubClientHandle, OPTION_AUTO_URL_ENCODE_DECODE, &urlAutoEncodeDecode) != IOTHUB_CLIENT_OK) {
+			Log_Debug("ERROR: Failed to set auto Url encode option on IoT Hub Client\n");
+			provisioningState = DEVICE_PROVISIONING_ERROR;
+			goto cleanup;
+		}
+
+		if (dtdlBuffer != NULL) {
+			if (IoTHubDeviceClient_LL_SetOption(iothubClientHandle, OPTION_MODEL_ID, _deviceTwinModelId) != IOTHUB_CLIENT_OK) {
+				Log_Debug("ERROR: failure setting option \"%s\"\n", OPTION_MODEL_ID);
+				provisioningState = DEVICE_PROVISIONING_ERROR;
+				goto cleanup;
+			}
+		}
+
+		provisioningState = DEVICE_PROVISIONED;
+
+		break;
+	default:
+		break;
 	}
 
+	//// Begin provisioning device with DPS
+	//// Initiates timer to prevent timing out
+	//static const long timeoutMs = 8000; // allow up to 8 seconds before timeout
+	//static const long workDelayMs = 25;
+	//const struct timespec sleepTime = { .tv_sec = 0, .tv_nsec = workDelayMs * 1000 * 1000 };
+	//long time_elapsed = 0;
+
+	//dpsRegisterStatus = PROV_DEVICE_REG_HUB_NOT_SPECIFIED;
+
+	//while (dpsRegisterStatus != PROV_DEVICE_RESULT_OK && time_elapsed < timeoutMs) {
+	//	Prov_Device_LL_DoWork(prov_handle);
+	//	nanosleep(&sleepTime, NULL);
+	//	time_elapsed += workDelayMs;
+	//}
+
+	//if (dpsRegisterStatus != PROV_DEVICE_RESULT_OK) {
+	//	Log_Debug("ERROR: Failed to register device with provisioning service\n");
+	//	goto cleanup;
+	//}
+
+	
 	result = true;
 
 cleanup:
-	if (dtdlBuffer != NULL) {
-		free(dtdlBuffer);
-		dtdlBuffer = NULL;
+	if (provisioningState == DEVICE_PROVISIONED || provisioningState == DEVICE_PROVISIONING_ERROR) {
+
+		if (dtdlBuffer != NULL) {
+			free(dtdlBuffer);
+			dtdlBuffer = NULL;
+		}
+
+		if (iotHubUri != NULL) {
+			free(iotHubUri);
+			iotHubUri = NULL;
+		}
+
+		if (prov_handle != NULL) {
+			Prov_Device_LL_Destroy(prov_handle);
+			prov_handle = NULL;
+		}
+
+		prov_dev_security_deinit();
 	}
 
-	if (iotHubUri != NULL) {
-		free(iotHubUri);
-		iotHubUri = NULL;
-	}
-
-	if (prov_handle != NULL) {
-		Prov_Device_LL_Destroy(prov_handle);
-	}
-
-	prov_dev_security_deinit();
 	return result;
 }
 
@@ -403,6 +460,8 @@ static void HubConnectionStatusCallback(IOTHUB_CLIENT_CONNECTION_STATUS result, 
 			iotHubClientAuthenticationState = IoTHubClientAuthenticationState_Device_Disbled;
 		} else {
 			iotHubClientAuthenticationState = IoTHubClientAuthenticationState_NotAuthenticated;
+			provisioningState = DEVICE_NOT_PROVISIONED;
+			Log_Debug("Hub status callback: provisioningState = DEVICE_NOT_PROVISIONED\n");
 		}
 		return;
 	}
