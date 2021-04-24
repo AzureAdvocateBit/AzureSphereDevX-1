@@ -55,7 +55,7 @@ static DX_TIMER send_message_timer = { .period = { 5, 0 }, .name = "send_message
 static DX_TIMER send_message_with_properties_timer = { .period = { 5, 0 }, .name = "send_message_with_properties_timer", .handler = send_message_with_properties_handler };
 
 // Add all timers by reference to this timer set
-DX_TIMER* timerSet[] = { &send_message_handler, &send_message_with_properties_timer };
+DX_TIMER* timerSet[] = { &send_message_timer, &send_message_with_properties_timer };
 
 static void send_message_handler(EventLoopTimer* eventLoopTimer) {
 	if (ConsumeEventLoopTimerEvent(eventLoopTimer) != 0) {
